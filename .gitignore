@@ -5,6 +5,7 @@
 /app-builds
 /tmp
 /out-tsc
+/.cache
 
 # dependencies
 /node_modules
