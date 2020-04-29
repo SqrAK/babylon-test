@@ -1,0 +1,20 @@
+{
+  "name": "three-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "parcel index.html --host=0.0.0.0"
+  },
+  "author": "alice",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "@types/cannon": "^0.1.4",
+    "babylonjs": "^4.1.0",
+    "cannon": "^0.6.2",
+    "parcel-bundler": "^1.12.4"
+  }
+}
