@@ -16,20 +16,24 @@ class Game {
         this._canvas = document.getElementById(canvasElement) as HTMLCanvasElement;
         this._engine = new BABYLON.Engine(this._canvas, true);
         console.log('construtor')
-        console.log(window.DeviceMotionEvent)
-        window.addEventListener("devicemotion", this.handleOrientation, true);
+        console.log(window.DeviceOrientationEvent)
+        console.log(window);
+        window.screen.orientation.onchange = () => {console.log('change')}
+        window.addEventListener('devicemotion', this.handleOrientation, true);
     }
 
     handleOrientation(event) {
-        // var absolute = event.absolute;
-        // var alpha    = event.alpha;
-        // var beta     = event.beta;
-        // var gamma    = event.gamma;
-        // console.log(alpha, beta, gamma)
+        var absolute = event.absolute;
+        var alpha    = event.alpha;
+        var beta     = event.beta;
+        var gamma    = event.gamma;
+        console.log(alpha, beta, gamma)
 
         const x = event.accelerationIncludingGravity.x;
         const y = event.accelerationIncludingGravity.y;
         const z = event.accelerationIncludingGravity.z;
+        console.log(event.acceleration.x
+            + ' m/s2');
         console.log(x, y, z);
         // Do stuff with the new orientation data
     }
@@ -40,6 +44,8 @@ class Game {
         this.widthScene = this._scene.getEngine().getRenderingCanvasClientRect().width;
         this.heightScene = this._scene.getEngine().getRenderingCanvasClientRect().height;
 
+        this._scene.clearColor = new BABYLON.Color3(0.5, 0.8, 0.5);
+
         const gravityVector = new BABYLON.Vector3(0, -9.81, 0);
         const physicsPlugin = new BABYLON.CannonJSPlugin(true, 10, cannon);
         this._scene.enablePhysics(gravityVector, physicsPlugin);
@@ -48,7 +54,7 @@ class Game {
         this._camera = new BABYLON.ArcRotateCamera('camera1', Math.PI / 2, Math.PI / 2, 10,
             new BABYLON.Vector3(0, 0, 0), this._scene);
         this._camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
-        // //
+
         var distance = 500;
         var aspect = this._scene.getEngine().getRenderingCanvasClientRect().height / this._scene.getEngine().getRenderingCanvasClientRect().width;
         this._camera.orthoLeft = -distance / 2;
@@ -56,16 +62,20 @@ class Game {
         this._camera.orthoBottom = this._camera.orthoLeft * aspect;
         this._camera.orthoTop = this._camera.orthoRight * aspect;
 
-        // this._camera.setPosition(new BABYLON.Vector3(10.253, 5.82251, -9.45717));
-
         // Target the camera to scene origin.
         this._camera.setTarget(BABYLON.Vector3.Zero());
 
         // Attach the camera to the canvas.
-        // this._camera.attachControl(this._canvas, false);
+        this._camera.attachControl(this._canvas, false);
 
         // Create a basic light, aiming 0,1,0 - meaning, to the sky.
-        this._light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, 1, 0), this._scene);
+        this._light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, this._camera.orthoTop, 500), this._scene);
+
+
+
+        const grass0 = new BABYLON.StandardMaterial("grass0", this._scene);
+        grass0.diffuseTexture = new BABYLON.Texture("textures/sand.jpg", this._scene);
+
 
         const countEL = 100;
         let i = 0;
@@ -76,12 +86,12 @@ class Game {
             if (i >= countEL) {
                 clearInterval(interval);
             }
-            this.addElement(i, 2, 3, Math.abs(this._camera.orthoBottom) + getRandomInt(0, 6), getRandomInt(-3, 3));
+            this.addElement(i, 2, 3, Math.abs(this._camera.orthoBottom) + getRandomInt(0, 6), getRandomInt(-3, 3), grass0);
             i++;
         }, 100);
 
         this.addWalls();
-        // this.addAxis();
+        this.addAxis();
 
 
         // let acl = new Accelerometer({frequency: 60});
@@ -130,22 +140,22 @@ class Game {
         wallRight.position.x = this._camera.orthoLeft;
 
 
-        let wallBack = BABYLON.MeshBuilder.CreateBox('wallBack',
-            {
-                width: Math.abs(this._camera.orthoLeft) * 2,
-                height: Math.abs(this._camera.orthoBottom) * 2,
-                depth: 1,
-                faceColors: [new BABYLON.Color4(0, 0, 0, 1)]
-            }, this._scene);
-        wallBack.physicsImpostor = new BABYLON.PhysicsImpostor(wallBack, BABYLON.PhysicsImpostor.BoxImpostor, {
-            mass: 0,
-            restitution: 0.9
-        }, this._scene);
-        //
-        wallBack.position.z = -1.5;
+        // let wallBack = BABYLON.MeshBuilder.CreateBox('wallBack',
+        //     {
+        //         width: Math.abs(this._camera.orthoLeft) * 2,
+        //         height: Math.abs(this._camera.orthoBottom) * 2,
+        //         depth: 1,
+        //         faceColors: [new BABYLON.Color4(0.2666, 0.33333, 0.3529, 1)]
+        //     }, this._scene);
+        // wallBack.physicsImpostor = new BABYLON.PhysicsImpostor(wallBack, BABYLON.PhysicsImpostor.BoxImpostor, {
+        //     mass: 0,
+        //     restitution: 0.9
+        // }, this._scene);
+        // //
+        // wallBack.position.z = -1.5;
     }
 
-    addElement(id, diameter = 2, mass = 2, y = 3, x = 0) {
+    addElement(id, diameter = 2, mass = 2, y = 3, x = 0, texture?) {
         let sphere = BABYLON.MeshBuilder.CreateSphere('sphere' + id,
             {segments: 5, diameter: diameter}, this._scene);
 
@@ -156,6 +166,10 @@ class Game {
 
         sphere.position.y = y;
         sphere.position.x = x;
+
+        if (texture) {
+            sphere.material = texture;
+        }
     }
 
     addAxis() {

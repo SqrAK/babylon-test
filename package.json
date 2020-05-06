@@ -4,11 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "parcel index.html --host=0.0.0.0"
+    "start": "parcel index.html --host=0.0.0.0",
+    "build": "parcel build index.html --public-url './'"
   },
   "author": "alice",
   "license": "MIT",
   "devDependencies": {
+    "parcel-plugin-static-files-copy": "^2.3.1",
     "typescript": "^3.8.3"
   },
   "dependencies": {
@@ -17,5 +19,9 @@
     "cannon": "^0.6.2",
     "eruda": "^2.3.2",
     "parcel-bundler": "^1.12.4"
+  },
+  "staticFiles": {
+    "staticPath": "static",
+    "watcherGlob": "**"
   }
 }
