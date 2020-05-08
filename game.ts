@@ -1,4 +1,5 @@
 import * as BABYLON from 'babylonjs';
+// @ts-ignore
 import cannon from 'cannon';
 
 class Game {
@@ -7,36 +8,26 @@ class Game {
     private _scene: BABYLON.Scene;
     private _camera: BABYLON.ArcRotateCamera;
     private _light: BABYLON.Light;
+    private physicsEngine;
 
     private widthScene: number;
     private heightScene: number;
 
     constructor(canvasElement: string) {
-        // Create canvas and engine.
         this._canvas = document.getElementById(canvasElement) as HTMLCanvasElement;
         this._engine = new BABYLON.Engine(this._canvas, true);
-        console.log('construtor')
-        console.log(window.DeviceOrientationEvent)
-        console.log(window.DeviceMotionEvent)
-        console.log(window);
-        window.screen.orientation.onchange = () => {console.log('change')}
-        window.addEventListener('devicemotion', this.handleOrientation, true);
+        this.handleOrientation = this.handleOrientation.bind(this)
     }
 
     handleOrientation(event) {
-        var absolute = event.absolute;
-        var alpha    = event.alpha;
-        var beta     = event.beta;
-        var gamma    = event.gamma;
-        console.log(alpha, beta, gamma)
+        const alpha = event.alpha;
+        const beta = event.beta;
+        const gamma = event.gamma;
+        const degToPhysic = -7.174311;
 
-        const x = event.accelerationIncludingGravity.x;
-        const y = event.accelerationIncludingGravity.y;
-        const z = event.accelerationIncludingGravity.z;
-        console.log(event.acceleration.x
-            + ' m/s2');
-        console.log(x, y, z);
-        // Do stuff with the new orientation data
+        if (this.physicsEngine) {
+            this.physicsEngine.setGravity(new BABYLON.Vector3(gamma/degToPhysic, beta/degToPhysic, 0));
+        }
     }
 
     createScene(): void {
@@ -51,7 +42,9 @@ class Game {
         const physicsPlugin = new BABYLON.CannonJSPlugin(true, 10, cannon);
         this._scene.enablePhysics(gravityVector, physicsPlugin);
 
-        // Create a FreeCamera, and set its position to (x:0, y:5, z:-10).
+        this.physicsEngine = this._scene.getPhysicsEngine();
+        window.addEventListener('deviceorientation', this.handleOrientation, true);
+
         this._camera = new BABYLON.ArcRotateCamera('camera1', Math.PI / 2, Math.PI / 2, 100,
             new BABYLON.Vector3(0, 0, 0), this._scene);
         this._camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
@@ -63,23 +56,22 @@ class Game {
         this._camera.orthoBottom = this._camera.orthoLeft * aspect;
         this._camera.orthoTop = this._camera.orthoRight * aspect;
 
-        // Target the camera to scene origin.
         this._camera.setTarget(BABYLON.Vector3.Zero());
 
-        // Attach the camera to the canvas.
-        this._camera.attachControl(this._canvas, false);
+        const options = new BABYLON.SceneOptimizerOptions(60, 500);
+        options.addOptimization(new BABYLON.HardwareScalingOptimization(0, 1));
 
-        // Create a basic light, aiming 0,1,0 - meaning, to the sky.
+        const optimizer = new BABYLON.SceneOptimizer(this._scene, options);
+
+        // this._camera.attachControl(this._canvas, false);
+
         this._light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0, 1.5 * Math.abs(this._camera.orthoTop), 50), this._scene);
         this._light = new BABYLON.HemisphericLight('light2', new BABYLON.Vector3(0, -1.5 * Math.abs(this._camera.orthoTop), 50), this._scene);
-
-
 
         const grass0 = new BABYLON.StandardMaterial("grass0", this._scene);
         grass0.diffuseTexture = new BABYLON.Texture("textures/sand.jpg", this._scene);
 
-
-        const countEL = 100;
+        const countEL = 200;
         let i = 0;
 
         const getRandomInt = (min, max) => Math.random() * (max - min) + min;
@@ -93,7 +85,6 @@ class Game {
         }, 100);
 
         this.addWalls();
-        // this.addAxis();
         this.toggleFullScreen();
 
     }
@@ -108,9 +99,18 @@ class Game {
 
         ground.position.y = this._camera.orthoBottom - 1;
 
+        let ground2 = BABYLON.MeshBuilder.CreateBox('ground2',
+            {width: Math.abs(this._camera.orthoLeft) * 2, height: 2, depth: 5}, this._scene);
+        ground2.physicsImpostor = new BABYLON.PhysicsImpostor(ground2, BABYLON.PhysicsImpostor.BoxImpostor, {
+            mass: 0,
+            restitution: 0.3
+        }, this._scene);
+
+        ground2.position.y = -this._camera.orthoBottom + 15;
+
 
         let wallLeft = BABYLON.MeshBuilder.CreateBox('wallLeft',
-            {width: 1, height: Math.abs(this._camera.orthoBottom) * 2, depth: 5}, this._scene);
+            {width: 1, height: Math.abs(this._camera.orthoBottom) * 2 + 30, depth: 5}, this._scene);
         wallLeft.physicsImpostor = new BABYLON.PhysicsImpostor(wallLeft, BABYLON.PhysicsImpostor.BoxImpostor, {
             mass: 0,
             restitution: 0.3
@@ -120,7 +120,7 @@ class Game {
 
 
         let wallRight = BABYLON.MeshBuilder.CreateBox('wallRight',
-            {width: 1, height: Math.abs(this._camera.orthoBottom) * 2, depth: 5}, this._scene);
+            {width: 1, height: Math.abs(this._camera.orthoBottom) * 2 + 30, depth: 5}, this._scene);
         wallRight.physicsImpostor = new BABYLON.PhysicsImpostor(wallRight, BABYLON.PhysicsImpostor.BoxImpostor, {
             mass: 0,
             restitution: 0.3
@@ -132,7 +132,7 @@ class Game {
         let wallBack = BABYLON.MeshBuilder.CreateBox('wallBack',
             {
                 width: Math.abs(this._camera.orthoLeft) * 2 + 2,
-                height: Math.abs(this._camera.orthoBottom) * 2,
+                height: Math.abs(this._camera.orthoBottom) * 2 + 30,
                 depth: 1
             }, this._scene);
         wallBack.physicsImpostor = new BABYLON.PhysicsImpostor(wallBack, BABYLON.PhysicsImpostor.BoxImpostor, {
@@ -148,16 +148,15 @@ class Game {
     }
 
     toggleFullScreen() {
-        var doc = window.document;
+        const doc = window.document;
         var docEl = doc.documentElement;
 
         var requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
         var cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
 
-        if(!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+        if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
             requestFullScreen.call(docEl);
-        }
-        else {
+        } else {
             cancelFullScreen.call(doc);
         }
     }
@@ -179,52 +178,11 @@ class Game {
         }
     }
 
-    addAxis() {
-        const size = 8;
-
-        const _this = this;
-        var makeTextPlane = function (text, color, size) {
-            var dynamicTexture = new BABYLON.DynamicTexture("DynamicTexture", 50, _this._scene, true);
-            dynamicTexture.hasAlpha = true;
-            dynamicTexture.drawText(text, 5, 40, "bold 36px Arial", color, "transparent", true);
-            var plane = BABYLON.Mesh.CreatePlane("TextPlane", size, _this._scene, true);
-            plane.material = new BABYLON.StandardMaterial("TextPlaneMaterial", _this._scene);
-            plane.material.backFaceCulling = false;
-            plane.material.specularColor = new BABYLON.Color3(0, 0, 0);
-            plane.material.diffuseTexture = dynamicTexture;
-            return plane;
-        };
-
-        var axisX = BABYLON.Mesh.CreateLines("axisX", [
-            BABYLON.Vector3.Zero(), new BABYLON.Vector3(size, 0, 0), new BABYLON.Vector3(size * 0.95, 0.05 * size, 0),
-            new BABYLON.Vector3(size, 0, 0), new BABYLON.Vector3(size * 0.95, -0.05 * size, 0)
-        ], this._scene);
-        axisX.color = new BABYLON.Color3(1, 0, 0);
-        var xChar = makeTextPlane("X", "red", size / 10);
-        xChar.position = new BABYLON.Vector3(0.9 * size, -0.05 * size, 0);
-        var axisY = BABYLON.Mesh.CreateLines("axisY", [
-            BABYLON.Vector3.Zero(), new BABYLON.Vector3(0, size, 0), new BABYLON.Vector3(-0.05 * size, size * 0.95, 0),
-            new BABYLON.Vector3(0, size, 0), new BABYLON.Vector3(0.05 * size, size * 0.95, 0)
-        ], this._scene);
-        axisY.color = new BABYLON.Color3(0, 1, 0);
-        var yChar = makeTextPlane("Y", "green", size / 10);
-        yChar.position = new BABYLON.Vector3(0, 0.9 * size, -0.05 * size);
-        var axisZ = BABYLON.Mesh.CreateLines("axisZ", [
-            BABYLON.Vector3.Zero(), new BABYLON.Vector3(0, 0, size), new BABYLON.Vector3(0, -0.05 * size, size * 0.95),
-            new BABYLON.Vector3(0, 0, size), new BABYLON.Vector3(0, 0.05 * size, size * 0.95)
-        ], this._scene);
-        axisZ.color = new BABYLON.Color3(0, 0, 1);
-        var zChar = makeTextPlane("Z", "blue", size / 10);
-        zChar.position = new BABYLON.Vector3(0, 0.05 * size, 0.9 * size);
-    }
-
     doRender(): void {
-        // Run the render loop.
         this._engine.runRenderLoop(() => {
             this._scene.render();
         });
 
-        // The canvas/window resize event handler.
         window.addEventListener('resize', () => {
             this._engine.resize();
         });
@@ -232,12 +190,9 @@ class Game {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    // Create the game using the 'renderCanvas'.
     let game = new Game('renderCanvas');
 
-    // Create the scene.
     game.createScene();
 
-    // Start render loop.
     game.doRender();
 });

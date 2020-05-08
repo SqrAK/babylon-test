@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "parcel index.html --host=0.0.0.0",
+    "start": "parcel index.html --host=0.0.0.0 --https",
     "build": "parcel build index.html --public-url './'"
   },
   "author": "alice",
